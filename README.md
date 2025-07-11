@@ -33,6 +33,7 @@
 
 ![YouTubey Demo]( https://github.com/Aditgm/youtubey/blob/main/images/image-demo.png?raw=true)
 ![YouTubey Demo]( https://github.com/Aditgm/youtubey/blob/main/images/image-demo-1.png?raw=true)
+![YouTubey Demo]( https://github.com/Aditgm/youtubey/blob/main/images/image-demo-2.png?raw=true)
 
 </div>
 ## 🛠️ Tech Stack
