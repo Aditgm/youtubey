@@ -31,10 +31,9 @@
 
 <div align="center">
 
-![YouTubey Demo]((https://github.com/Aditgm/youtubey/blob/main/images/image-demo.png))
+![YouTubey Demo]( https://github.com/Aditgm/youtubey/blob/main/images/image-demo.png?raw=true)
 
 </div>
-
 ## 🛠️ Tech Stack
 
 - **Frontend**
