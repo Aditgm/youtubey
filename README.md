@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![YouTubey Logo](https://github.com/Aditgm/youtubey/blob/main/images/image.png)
+![YouTubey Logo](https://github.com/Aditgm/youtubey/blob/main/images/image-youtubey.png)
 
 [![GitHub license](https://img.shields.io/github/license/your-username/youtubey)](https://github.com/your-username/youtubey/blob/main/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/your-username/youtubey)](https://github.com/your-username/youtubey/stargazers)
