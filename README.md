@@ -31,7 +31,7 @@
 
 <div align="center">
 
-[![YouTubey Demo](https://your-demo-gif-url.gif)](https://youtubey.app)
+[![YouTubey Demo]((https://github.com/Aditgm/youtubey/blob/main/images/image-demo.png))]
 
 </div>
 
