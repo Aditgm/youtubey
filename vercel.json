@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "cd youtubey-frontend && npm install && npm run build",
+  "outputDirectory": "youtubey-frontend/dist",
   "framework": "vite",
   "rewrites": [
     {
