@@ -27,7 +27,7 @@
 - ⚡ **Fast Processing** - Get summaries in seconds
 - 🎨 **Customizable Formats** - Choose how you want your summary
 
-## 🚀 Demo
+# 🚀 Demo
 
 <div align="center">
 
@@ -36,7 +36,7 @@
 ![YouTubey Demo]( https://github.com/Aditgm/youtubey/blob/main/images/image-demo-2.png?raw=true)
 
 </div>
-## 🛠️ Tech Stack
+# 🛠️ Tech Stack
 
 - **Frontend**
   - [React.js](https://reactjs.org/) - UI Framework
@@ -48,7 +48,7 @@
   - [YouTube API](https://developers.google.com/youtube) - Video Processing
   - [Google Gemini AI](https://ai.google.dev/) - AI Summarization
 
-## 📦 Installation
+# 📦 Installation
 
 1. **Clone the repository**
 ```bash
@@ -85,7 +85,7 @@ npm start
 yarn start
 ```
 
-## 📝 Environment Variables
+# 📝 Environment Variables
 
 | Variable | Description |
 |----------|-------------|
@@ -93,7 +93,7 @@ yarn start
 | `REACT_APP_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain |
 | `REACT_APP_GEMINI_API_KEY` | Google Gemini AI API Key |
 
-## 🤝 Contributing
+# 🤝 Contributing
 
 We love contributions! Here's how you can help:
 
@@ -105,18 +105,18 @@ We love contributions! Here's how you can help:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-## 📜 License
+# 📜 License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
-## 🌟 Acknowledgments
+# 🌟 Acknowledgments
 
 - [YouTube Transcript API](https://github.com/jdepoix/youtube-transcript-api)
 - [Google Gemini AI](https://ai.google.dev/)
 - [Material-UI](https://mui.com/)
 - [Firebase](https://firebase.google.com/)
 
-## 📊 Project Stats
+# 📊 Project Stats
 
 <div align="center">
 
@@ -127,7 +127,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 </div>
 
-## 🤝 Support
+# 🤝 Support
 
 <div align="center">
 
@@ -137,7 +137,7 @@ Give a ⭐️ if this project helped you!
 
 </div>
 
-## 📞 Contact
+# 📞 Contact
 
 Aditya Raj  - arajsinha4@example.com
 
