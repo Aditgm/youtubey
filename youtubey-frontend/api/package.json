@@ -1,0 +1,9 @@
+{
+  "name": "youtubey-api",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "youtube-transcript": "^2.0.3",
+    "node-fetch": "^3.3.2"
+  }
+} 
