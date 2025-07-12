@@ -1,4 +1,4 @@
-# YouTubey 🎥 ✨
+# YouTubey 🎥
 
 <div align="center">
 
