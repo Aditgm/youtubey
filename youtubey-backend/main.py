@@ -78,15 +78,25 @@ async def get_transcript(req: TranscriptRequest):
     try:
         try:
             transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
-        except Exception:
+        except Exception as e:
+            # Check for rate limit (429) or Google block
+            if '429' in str(e) or 'Too Many Requests' in str(e) or 'google.com/sorry' in str(e):
+                return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please try again in a few hours, or use a different video. This is a YouTube limitation, not a bug in the app."}
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
             first_transcript = next(iter(transcript_list), None)
             if first_transcript is None:
                 raise Exception('No transcripts available for this video.')
             transcript = first_transcript.fetch()
-        transcript_text = " ".join([line['text'] for line in transcript])
+        # Handle both dictionary and object formats
+        if isinstance(transcript[0], dict):
+            transcript_text = " ".join([line['text'] for line in transcript])
+        else:
+            transcript_text = " ".join([line.text for line in transcript])
         return {"transcript": transcript_text}
     except Exception as e:
+        # Check for rate limit (429) or Google block
+        if '429' in str(e) or 'Too Many Requests' in str(e) or 'google.com/sorry' in str(e):
+            return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please try again in a few hours, or use a different video. This is a YouTube limitation, not a bug in the app."}
         return {"error": str(e)}
 
 @app.post("/summarize")
