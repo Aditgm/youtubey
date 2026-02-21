@@ -90,7 +90,7 @@ if GEMINI_API_KEY:
 else:
     print("⚠️ Warning: GEMINI_API_KEY not found in environment variables!")
 
-def get_transcript_with_ytdlp(video_id: str, cookies_file: str = None) -> str:
+def get_transcript_with_ytdlp(video_id: str) -> str:
     url = f"https://www.youtube.com/watch?v={video_id}"
     
     ydl_opts = {
@@ -102,31 +102,42 @@ def get_transcript_with_ytdlp(video_id: str, cookies_file: str = None) -> str:
         'no_warnings': True,
     }
     
-    if cookies_file and os.path.exists(cookies_file):
-        ydl_opts['cookiefile'] = cookies_file
+    # Securely read cookies from the environment variable (not from a file in repo)
+    youtube_cookies_env = os.getenv("YOUTUBE_COOKIES")
+    cookie_temp_file = None
+    
+    if youtube_cookies_env:
+        # Create a temporary file to hold the cookies for yt-dlp
+        fd, cookie_temp_file = tempfile.mkstemp(suffix=".txt")
+        with os.fdopen(fd, 'w') as f:
+            f.write(youtube_cookies_env)
+        
+        ydl_opts['cookiefile'] = cookie_temp_file
+        print("Using cookies from YOUTUBE_COOKIES environment variable")
+    elif os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = "cookies.txt"
+        print("Using local cookies.txt file (Warning: Do not commit to public repo)")
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        
-        # Look for English subtitles or automatic captions
-        subs = info.get('requested_subtitles')
-        if not subs:
-            subs = info.get('automatic_captions')
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
             
-        if not subs or 'en' not in subs:
-            raise Exception("No English transcripts available for this video.")
+            # Look for English subtitles or automatic captions
+            subs = info.get('requested_subtitles')
+            if not subs:
+                subs = info.get('automatic_captions')
+                
+            if not subs or 'en' not in subs:
+                raise Exception("No English transcripts available for this video.")
+                
+            # Get the highest priority transcript URL (usually JSON3 or VTT)
+            sub_info = subs['en'][0] if isinstance(subs['en'], list) else subs['en']
             
-        # Get the highest priority transcript URL (usually JSON3 or VTT)
-        sub_info = subs['en'][0] if isinstance(subs['en'], list) else subs['en']
-        
-        # Download and parse
-        try:
+            # Download and parse
             import urllib.request
             import json
             req = urllib.request.Request(sub_info['url'])
-            if cookies_file and os.path.exists(cookies_file):
-                # Simple parsing for cookie header if needed, but usually urlib with ytdlp's extracted URL is fine
-                pass
+            
             with urllib.request.urlopen(req) as response:
                 content = response.read().decode('utf-8')
                 
@@ -154,23 +165,28 @@ def get_transcript_with_ytdlp(video_id: str, cookies_file: str = None) -> str:
                             text_parts.append(tag_stripped)
                     return " ".join(text_parts)
                     
-        except Exception as e:
-            raise Exception(f"Error fetching transcript content: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Error fetching transcript content: {str(e)}")
+    finally:
+        # Always clean up the temporary cookie file to prevent leaks
+        if cookie_temp_file and os.path.exists(cookie_temp_file):
+            try:
+                os.remove(cookie_temp_file)
+            except Exception as cleanup_err:
+                print(f"Failed to delete temp cookie file: {cleanup_err}")
 
 
 @app.post("/transcript")
 async def get_transcript(req: TranscriptRequest):
     video_id = extract_video_id(req.url)
-    cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
-    print(f"Using cookies file: {cookies_file}")
     
     try:
-        transcript_text = get_transcript_with_ytdlp(video_id, cookies_file)
+        transcript_text = get_transcript_with_ytdlp(video_id)
         return {"transcript": transcript_text}
     except Exception as e:
         error_msg = str(e)
         if '429' in error_msg or 'Too Many Requests' in error_msg or 'Sign in to confirm you’re not a bot' in error_msg:
-            return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Adding a cookies.txt file to the server root may fix this."}
+            return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please set the YOUTUBE_COOKIES environment variable in Render."}
         return {"error": str(e)}
 
 @app.post("/summarize")
@@ -182,11 +198,8 @@ async def summarize(req: TranscriptRequest):
     summary_type = req.summary_type.lower()
     
     try:
-        cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
-        print(f"Using cookies file: {cookies_file}")
-        
         try:
-            transcript_text = get_transcript_with_ytdlp(video_id, cookies_file)
+            transcript_text = get_transcript_with_ytdlp(video_id)
         except Exception as e:
             raise Exception(f"Failed to extract transcript: {str(e)}")
           
