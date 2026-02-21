@@ -200,7 +200,7 @@ function App() {
     setLoading(true);
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://youtubey.onrender.com';
       const response = await fetch(`${apiUrl}/summarize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
