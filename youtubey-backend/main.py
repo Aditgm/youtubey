@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from youtube_transcript_api import YouTubeTranscriptApi
+import yt_dlp
 import re
 from dotenv import load_dotenv
 import os
 import time
 import google.generativeai as genai
 from datetime import datetime, timedelta
+import tempfile
 
 load_dotenv()
 
@@ -89,34 +90,87 @@ if GEMINI_API_KEY:
 else:
     print("⚠️ Warning: GEMINI_API_KEY not found in environment variables!")
 
+def get_transcript_with_ytdlp(video_id: str, cookies_file: str = None) -> str:
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    
+    ydl_opts = {
+        'skip_download': True,
+        'writesubtitles': True,
+        'writeautomaticsub': True,
+        'subtitleslangs': ['en'],
+        'quiet': True,
+        'no_warnings': True,
+    }
+    
+    if cookies_file and os.path.exists(cookies_file):
+        ydl_opts['cookiefile'] = cookies_file
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        
+        # Look for English subtitles or automatic captions
+        subs = info.get('requested_subtitles')
+        if not subs:
+            subs = info.get('automatic_captions')
+            
+        if not subs or 'en' not in subs:
+            raise Exception("No English transcripts available for this video.")
+            
+        # Get the highest priority transcript URL (usually JSON3 or VTT)
+        sub_info = subs['en'][0] if isinstance(subs['en'], list) else subs['en']
+        
+        # Download and parse
+        try:
+            import urllib.request
+            import json
+            req = urllib.request.Request(sub_info['url'])
+            if cookies_file and os.path.exists(cookies_file):
+                # Simple parsing for cookie header if needed, but usually urlib with ytdlp's extracted URL is fine
+                pass
+            with urllib.request.urlopen(req) as response:
+                content = response.read().decode('utf-8')
+                
+                # If json3 format
+                if sub_info.get('ext') == 'json3':
+                    data = json.loads(content)
+                    events = data.get('events', [])
+                    text_parts = []
+                    for ev in events:
+                        segs = ev.get('segs', [])
+                        for seg in segs:
+                            t = seg.get('utf8', '').strip()
+                            if t and t != '\n':
+                                text_parts.append(t)
+                    return " ".join(text_parts)
+                # If vtt format
+                else: 
+                    lines = content.split('\n')
+                    text_parts = []
+                    for line in lines:
+                        if '-->' in line or line.startswith('WEBVTT') or line.startswith('Kind:') or line.startswith('Language:') or not line.strip():
+                            continue
+                        tag_stripped = re.sub(r'<[^>]+>', '', line).strip() # strip vtt tags
+                        if tag_stripped:
+                            text_parts.append(tag_stripped)
+                    return " ".join(text_parts)
+                    
+        except Exception as e:
+            raise Exception(f"Error fetching transcript content: {str(e)}")
+
+
 @app.post("/transcript")
 async def get_transcript(req: TranscriptRequest):
     video_id = extract_video_id(req.url)
+    cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
+    print(f"Using cookies file: {cookies_file}")
+    
     try:
-        cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
-        print(f"Using cookies file: {cookies_file}")
-        
-        try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'], cookies=cookies_file)
-        except Exception as e:
-            # Check for rate limit (429) or Google block
-            if '429' in str(e) or 'Too Many Requests' in str(e) or 'google.com/sorry' in str(e):
-                return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please try again in a few hours, or use a different video. This is a YouTube limitation, not a bug in the app."}
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies_file)
-            first_transcript = next(iter(transcript_list), None)
-            if first_transcript is None:
-                raise Exception('No transcripts available for this video.')
-            transcript = first_transcript.fetch()
-        # Handle both dictionary and object formats
-        if isinstance(transcript[0], dict):
-            transcript_text = " ".join([line['text'] for line in transcript])
-        else:
-            transcript_text = " ".join([line.text for line in transcript])
+        transcript_text = get_transcript_with_ytdlp(video_id, cookies_file)
         return {"transcript": transcript_text}
     except Exception as e:
         error_msg = str(e)
-        if '429' in error_msg or 'Too Many Requests' in error_msg or 'google.com/sorry' in error_msg:
-            return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please try again in a few hours, or use a different video. This is a YouTube limitation, not a bug in the app."}
+        if '429' in error_msg or 'Too Many Requests' in error_msg or 'Sign in to confirm you’re not a bot' in error_msg:
+            return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Adding a cookies.txt file to the server root may fix this."}
         return {"error": str(e)}
 
 @app.post("/summarize")
@@ -132,40 +186,9 @@ async def summarize(req: TranscriptRequest):
         print(f"Using cookies file: {cookies_file}")
         
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'], cookies=cookies_file)
-        except Exception:
-            try:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies_file)
-                transcript = None
-                for t in transcript_list:
-                    if t.language_code == 'en':
-                        transcript = t.fetch()
-                        break
-                if transcript is None:
-                    first_transcript = next(iter(transcript_list), None)
-                    if first_transcript is None:
-                        raise Exception('No captions or transcripts available for this video.')
-                    transcript = first_transcript.fetch()
-            except Exception:
-                try:
-                    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies_file)
-                    first_transcript = next(iter(transcript_list), None)
-                    if first_transcript is None:
-                        raise Exception('No captions or transcripts available for this video.')
-                    transcript = first_transcript.fetch()
-                except Exception as ex:
-                    raise Exception(str(ex))
-        
-        if not transcript:
-            raise Exception("No content found in transcript")
-            
-        # Handle both dictionary and object formats
-        if isinstance(transcript[0], dict):
-            # Dictionary format
-            transcript_text = " ".join([line['text'] for line in transcript])
-        else:
-            # Object format - access text attribute
-            transcript_text = " ".join([line.text for line in transcript])
+            transcript_text = get_transcript_with_ytdlp(video_id, cookies_file)
+        except Exception as e:
+            raise Exception(f"Failed to extract transcript: {str(e)}")
           
         if summary_type == "simple":
             simple_result = await fallback_summarize(transcript_text)
