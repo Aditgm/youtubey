@@ -93,13 +93,16 @@ else:
 async def get_transcript(req: TranscriptRequest):
     video_id = extract_video_id(req.url)
     try:
+        cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
+        print(f"Using cookies file: {cookies_file}")
+        
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'], cookies=cookies_file)
         except Exception as e:
             # Check for rate limit (429) or Google block
             if '429' in str(e) or 'Too Many Requests' in str(e) or 'google.com/sorry' in str(e):
                 return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please try again in a few hours, or use a different video. This is a YouTube limitation, not a bug in the app."}
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies_file)
             first_transcript = next(iter(transcript_list), None)
             if first_transcript is None:
                 raise Exception('No transcripts available for this video.')
@@ -125,11 +128,14 @@ async def summarize(req: TranscriptRequest):
     summary_type = req.summary_type.lower()
     
     try:
+        cookies_file = "cookies.txt" if os.path.exists("cookies.txt") else None
+        print(f"Using cookies file: {cookies_file}")
+        
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'], cookies=cookies_file)
         except Exception:
             try:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies_file)
                 transcript = None
                 for t in transcript_list:
                     if t.language_code == 'en':
@@ -142,7 +148,7 @@ async def summarize(req: TranscriptRequest):
                     transcript = first_transcript.fetch()
             except Exception:
                 try:
-                    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies=cookies_file)
                     first_transcript = next(iter(transcript_list), None)
                     if first_transcript is None:
                         raise Exception('No captions or transcripts available for this video.')
