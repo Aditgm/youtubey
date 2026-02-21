@@ -20,6 +20,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import threading
+import urllib.request
+import time
+
+def keep_alive():
+    url = "https://youtubey.onrender.com/health"
+    while True:
+        try:
+            time.sleep(14 * 60) 
+            urllib.request.urlopen(url)
+            print(f"Pinged {url} to keep server alive")
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+
+threading.Thread(target=keep_alive, daemon=True).start()
+
+
+
 request_times = []
 MAX_REQUESTS_PER_MINUTE = 10
 
