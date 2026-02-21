@@ -24,7 +24,6 @@ request_times = []
 MAX_REQUESTS_PER_MINUTE = 10
 
 def check_rate_limit():
-    """Check if we're within rate limits"""
     global request_times
     now = time.time()
     request_times = [t for t in request_times if now - t < 60]
@@ -94,8 +93,8 @@ async def get_transcript(req: TranscriptRequest):
             transcript_text = " ".join([line.text for line in transcript])
         return {"transcript": transcript_text}
     except Exception as e:
-        # Check for rate limit (429) or Google block
-        if '429' in str(e) or 'Too Many Requests' in str(e) or 'google.com/sorry' in str(e):
+        error_msg = str(e)
+        if '429' in error_msg or 'Too Many Requests' in error_msg or 'google.com/sorry' in error_msg:
             return {"error": "YouTube is temporarily blocking transcript access due to too many requests from this server. Please try again in a few hours, or use a different video. This is a YouTube limitation, not a bug in the app."}
         return {"error": str(e)}
 
@@ -125,14 +124,17 @@ async def summarize(req: TranscriptRequest):
                     transcript = first_transcript.fetch()
             except Exception:
                 try:
-                    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
-                except Exception:
                     transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
                     first_transcript = next(iter(transcript_list), None)
                     if first_transcript is None:
                         raise Exception('No captions or transcripts available for this video.')
                     transcript = first_transcript.fetch()
+                except Exception as ex:
+                    raise Exception(str(ex))
         
+        if not transcript:
+            raise Exception("No content found in transcript")
+            
         # Handle both dictionary and object formats
         if isinstance(transcript[0], dict):
             # Dictionary format
